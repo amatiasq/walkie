@@ -1,0 +1,19 @@
+{
+  "name": "amongus-server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "test-with-coverage": "jest --coverage --collectCoverageFrom='src/**/*.ts'",
+    "coverage": "npm run test-with-coverage",
+    "start": "ts-node index.ts",
+    "pre-commit": "npm test"
+  },
+  "author": "A. Matías Quezada (amatiasq@gmail.com)",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {}
+}
