@@ -1,7 +1,7 @@
 import { IncomingMessage } from './../../server/src/IncomingMessage';
 import { OutgoingMessage } from './../../server/src/OutgoingMessage';
 
-const webSocket = new WebSocket('ws://localhost:9000');
+const webSocket = new WebSocket('ws://webrtc.amatiasq.com:9000');
 
 export function onMessage(listener: (data: OutgoingMessage) => void) {
   webSocket.onmessage = x => listener(JSON.parse(x.data));
