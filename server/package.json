@@ -1,19 +1,40 @@
 {
   "name": "amongus-server",
   "version": "0.0.1",
+  "author": "A. Matías Quezada (amatiasq@gmail.com)",
+  "license": "BSD-2-Clause",
   "private": true,
   "scripts": {
     "test": "jest",
     "test-with-coverage": "jest --coverage --collectCoverageFrom='src/**/*.ts'",
+    "test:ws": "wscat -c ws://localhost:9000",
     "coverage": "npm run test-with-coverage",
-    "start": "ts-node index.ts",
+    "start": "nodemon",
     "pre-commit": "npm test"
   },
-  "author": "A. Matías Quezada (amatiasq@gmail.com)",
-  "license": "BSD-2-Clause",
   "devDependencies": {
+    "@types/node": "^14.10.0",
+    "@types/uuid": "^8.3.0",
+    "@types/ws": "^7.2.6",
+    "nodemon": "^2.0.4",
     "ts-node": "^9.0.0",
-    "typescript": "^4.0.2"
+    "typescript": "^4.0.2",
+    "wscat": "^4.0.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "uuid": "^8.3.0",
+    "ws": "^7.3.1"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "node_modules"
+    ],
+    "watch": [
+      "src"
+    ],
+    "exec": "ts-node src/index.ts",
+    "ext": "ts"
+  }
 }
