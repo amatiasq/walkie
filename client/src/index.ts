@@ -1,22 +1,21 @@
-import { SerializedUser } from './../../server/src/users';
+import { IncomingMessageType } from '../../shared/IncomingMessage';
 import {
-  OutgoingMessageType,
   OutgoingMessage,
-} from './../../server/src/OutgoingMessage';
-import { IncomingMessageType } from './../../server/src/IncomingMessage';
-
-import { captureAudio, playAudio } from './audio';
-import { onMessage, send } from './websocket';
-import { renderUsers, renderUsername } from './ui';
+  OutgoingMessageType,
+} from '../../shared/OutgoingMessage';
+import { SerializedUser } from '../../shared/SerializedUser';
+import { captureAudio } from './audio';
+import { renderUsername, renderUsers } from './ui';
 import {
+  addTrack,
   connectToUser,
-  onOffer,
   onAnswer,
   onCandidate,
-  addTrack,
+  onOffer,
 } from './webrtc';
+import { onMessage, send } from './websocket';
 
-// captureAudio().then(prepareAudio).then(playAudio);
+// captureAudio().then(playAudio);
 
 const users: SerializedUser[] = [];
 

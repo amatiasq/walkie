@@ -1,5 +1,6 @@
-import { Server, IncomingMessage } from 'http';
+import { IncomingMessage, Server } from 'http';
 import { Server as WebSocketServer } from 'ws';
+
 import WebSocket = require('ws');
 
 export declare class NiceSocket extends WebSocket {

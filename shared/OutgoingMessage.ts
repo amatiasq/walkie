@@ -1,4 +1,4 @@
-import { SerializedUser } from './users';
+import { SerializedUser } from './SerializedUser';
 
 export enum OutgoingMessageType {
   ERROR = 'ERROR',

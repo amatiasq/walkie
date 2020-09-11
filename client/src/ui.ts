@@ -1,4 +1,4 @@
-import { SerializedUser } from './../../server/src/users';
+import { SerializedUser } from '../../shared/SerializedUser';
 
 export function renderUsername(name: string) {
   const parent = $('#username');

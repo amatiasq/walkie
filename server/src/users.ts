@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+
+import { SerializedUser } from '../../shared/SerializedUser';
 import { NiceSocket } from './websocket';
 
 const users = new Map<string, User>();
@@ -36,11 +38,6 @@ export function getConnectedUsers() {
 
 export function serializeUser({ id, name }: User) {
   return { id, name };
-}
-
-export interface SerializedUser {
-  id: string;
-  name: string;
 }
 
 export type User = NiceSocket & SerializedUser;

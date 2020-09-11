@@ -1,7 +1,7 @@
-import { SerializedUser } from '../../server/src/users';
-import { send } from './websocket';
-import { IncomingMessageType } from '../../server/src/IncomingMessage';
+import { IncomingMessageType } from '../../shared/IncomingMessage';
+import { SerializedUser } from '../../shared/SerializedUser';
 import { playAudio } from './audio';
+import { send } from './websocket';
 
 const connection = new RTCPeerConnection({
   // iceServers: [{ urls: 'stun:stun.1.google.com:19302' }],

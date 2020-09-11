@@ -1,16 +1,23 @@
 import { createServer } from 'http';
-import { bindWebsocketTo, NiceSocket } from './websocket';
+
 import {
-  isUsernameAvailable,
+  IncomingMessage,
+  IncomingMessageType,
+} from '../../shared/IncomingMessage';
+import {
+  OutgoingMessage,
+  OutgoingMessageType,
+} from '../../shared/OutgoingMessage';
+import {
   getConnectedUsers,
+  getUser,
+  isUsernameAvailable,
   registerUser,
+  removeUser,
   serializeUser,
   User,
-  getUser,
-  removeUser,
 } from './users';
-import { IncomingMessageType, IncomingMessage } from './IncomingMessage';
-import { OutgoingMessage, OutgoingMessageType } from './OutgoingMessage';
+import { bindWebsocketTo, NiceSocket } from './websocket';
 
 const port = process.env.PORT || 9000;
 const server = createServer((req, res) => {});
