@@ -3,51 +3,39 @@ import {
   OutgoingMessage,
   OutgoingMessageType,
 } from '../../shared/OutgoingMessage';
-import { SerializedUser } from '../../shared/SerializedUser';
 import { captureAudio } from './audio';
-import { renderUsername, renderUsers } from './ui';
+import { forceUserToSetName, renderUsername } from './ui';
 import {
-  addTrack,
-  connectToUser,
-  onAnswer,
-  onCandidate,
-  onOffer,
-} from './webrtc';
-import { onMessage, send } from './websocket';
+  getUserByName,
+  onUserClicked,
+  setUserList,
+  User,
+  userConnected,
+  userDisconnected,
+} from './users';
+import { PeerConnection } from './webrtc';
+import { Socket } from './websocket';
 
-// captureAudio().then(playAudio);
+const t = OutgoingMessageType;
+const socket = new Socket('wss://amongus.amatiasq.com');
 
-const users: SerializedUser[] = [];
+onUserClicked(toggleCall);
 
-onMessage(data => {
-  // console.log(data.type);
-  switch (data.type) {
-    case OutgoingMessageType.HANDSHAKE:
-      return login();
-    case OutgoingMessageType.LOGIN_RESULT:
-      return handleLoginResult(data);
-    case OutgoingMessageType.USER_CONNECTED:
-      return userConnected(data.user);
-    case OutgoingMessageType.USER_DISCONNECTED:
-      return userDisconnected(data.user);
-    case OutgoingMessageType.RECEIVE_OFFER:
-      return onOffer(data.from, data.offer);
-    case OutgoingMessageType.RECEIVE_ANSWER:
-      return onConnectionReady(data.from, data.answer);
-    case OutgoingMessageType.RECEIVE_CANDIDATE:
-      return onCandidate(data.from, data.candidate);
-    default:
-      console.log(`Unhandled message: ${data.type}`);
-  }
+socket.onMessage(t.HANDSHAKE, login);
+socket.onMessage(t.LOGIN_RESULT, data => handleLoginResult(data));
+socket.onMessage(t.USER_CONNECTED, data => userConnected(data.user));
+socket.onMessage(t.USER_DISCONNECTED, data => userDisconnected(data.user));
+
+socket.onMessage(t.RECEIVE_OFFER, data => {
+  const user = getUserByName(data.from);
+  return receiveOffer(user, data.offer);
 });
 
 function login() {
-  let name = sessionStorage.getItem('amongus:username');
-  while (!name) name = prompt('Username');
-  sessionStorage.setItem('amongus:username', name);
+  const name = forceUserToSetName();
   renderUsername(name);
 
-  send({
+  socket.send({
     type: IncomingMessageType.LOGIN,
     name,
   });
@@ -59,34 +47,61 @@ function handleLoginResult(data: OutgoingMessage) {
   }
 
   if (!data.success) {
-    return console.error(`LOGIN FAILED: ${data.message}`);
+    alert(data.message);
+    sessionStorage.clear();
+    location.reload();
+    return;
   }
 
-  users.push(...data.users);
-  renderUsers(users, initCall);
+  setUserList(data.users);
 }
 
-function userConnected(user: SerializedUser) {
-  console.log('CONNECTED', user);
-  users.push(user);
-  renderUsers(users, initCall);
+function toggleCall(user: User) {
+  return user.isCalling ? user.hangup() : callUser(user);
 }
 
-function userDisconnected(user: SerializedUser) {
-  console.log('DISCONNECTED', user);
-  const index = users.findIndex(x => x.id === user.id);
-  if (index === -1) return;
-  users.splice(index, 1);
-  renderUsers(users, initCall);
-}
-
-async function initCall(user: SerializedUser) {
+async function callUser(user: User) {
+  const conn = new PeerConnection(user, m => socket.send(m));
   const stream = await captureAudio();
-  console.log('sending audio');
-  stream.getTracks().forEach(x => addTrack(x, stream));
-  await connectToUser(user);
+
+  listenToSocket(conn, socket, user);
+
+  stream.getTracks().forEach(x => conn.addTrack(x, stream));
+  conn.sendOffer();
+
+  user.callStarted(conn);
+  return conn;
 }
 
-async function onConnectionReady(from: string, answer: RTCSessionDescription) {
-  await onAnswer(from, answer);
+async function receiveOffer(user: User, offer: RTCSessionDescription) {
+  const conn = new PeerConnection(user, m => socket.send(m));
+  const stream = await captureAudio();
+
+  listenToSocket(conn, socket, user);
+
+  stream.getTracks().forEach(x => conn.addTrack(x, stream));
+  conn.receiveOffer(offer);
+
+  user.callStarted(conn);
+  return conn;
+}
+
+function listenToSocket(conn: PeerConnection, socket: Socket, user: User) {
+  socket.onMessage(
+    OutgoingMessageType.RECEIVE_ANSWER,
+    ifFromUser(message => conn.receiveAnswer(message.answer)),
+  );
+
+  socket.onMessage(
+    OutgoingMessageType.RECEIVE_CANDIDATE,
+    ifFromUser(message => conn.receiveCandidate(message.candidate)),
+  );
+
+  function ifFromUser<T>(action: (x: T) => void) {
+    return (message: T) => {
+      if ((message as any).from === user.name) {
+        return action(message);
+      }
+    };
+  }
 }

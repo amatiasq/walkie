@@ -1,21 +1,49 @@
-import { SerializedUser } from '../../shared/SerializedUser';
+import { User } from './users';
+
+export function forceUserToSetName() {
+  let name = sessionStorage.getItem('amongus:username');
+  while (!name) name = prompt('Username');
+  sessionStorage.setItem('amongus:username', name);
+  return name;
+}
 
 export function renderUsername(name: string) {
   const parent = $('#username');
   parent.innerHTML = `<h1>${name}</h1>`;
 }
 
-export function renderUsers(users: SerializedUser[], onClick: Function) {
+export function renderCTA(text: string, onClick: Function) {
+  const parent = $('#cta');
+  const button = makeButton(text, () => {
+    parent.innerHTML = '';
+    onClick();
+  });
+
+  parent.appendChild(document.createElement('hr'));
+  parent.appendChild(button);
+}
+
+export function renderMessage(message: string) {
+  const parent = $('#message');
+  parent.innerHTML = message;
+}
+
+export function renderUsers(users: User[], onClick: Function) {
   const parent = $('#userlist');
 
   for (const user of users) {
     const el = document.createElement('div');
-    const btn = document.createElement('button');
 
-    btn.innerHTML = user.name;
-    btn.onclick = () => onClick(user);
+    const buttonClick = async () => {
+      await onClick(user);
+      renderUsers(users, onClick);
+    };
 
-    el.appendChild(btn);
+    const button = user.isCalling
+      ? makeButton(`${user.name} (colgar)...`, buttonClick)
+      : makeButton(user.name, buttonClick);
+
+    el.appendChild(button);
     parent.appendChild(el);
   }
 }
@@ -25,7 +53,6 @@ function $(id: string) {
 
   if (found) {
     found.innerHTML = '';
-    // Array.from(found.children).forEach(x => x.remove());
     return found;
   }
 
@@ -33,4 +60,13 @@ function $(id: string) {
   created.id = id.substr(1);
   document.body.appendChild(created);
   return created;
+}
+
+function makeButton(text: string, onClick: (e: Event) => void) {
+  const btn = document.createElement('button');
+  btn.innerHTML = text;
+  btn.style.fontSize = '3em';
+  btn.style.padding = '0.5em';
+  btn.onclick = onClick as any;
+  return btn;
 }

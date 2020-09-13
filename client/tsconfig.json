@@ -5,6 +5,7 @@
     "sourceMap": true,
     "outDir": "./dist/",
     "strict": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "resolveJsonModule": true
   }
 }
