@@ -1,9 +1,191 @@
-<!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <title>A Mongus</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Walkie</title>
+
+    <style>
+      /**
+       * Variables
+       */
+
+      body {
+        --background-color: #252031;
+        --control-color: #30344a;
+        --border-color: #58709d;
+        --text-color: #7dc431;
+        --border-width: 3px;
+        --gap: 16px;
+        --half-gap: calc(var(--gap) / 2);
+        --double-gap: calc(var(--gap) * 2);
+      }
+
+      /**
+       * Reset
+       */
+
+      html,
+      body,
+      #app {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        color: var(--text-color);
+        font-size: 1rem;
+        background-color: var(--background-color);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      }
+
+      button {
+        background-color: var(--control-color);
+        color: var(--text-color);
+        border: 0;
+        padding: var(--gap);
+      }
+
+      form {
+        margin: 0;
+        padding: 0;
+      }
+
+      dialog {
+        background-color: rgb(37, 37, 38);
+        border: var(--border-width) solid var(--border-color);
+        color: var(--text-color);
+      }
+
+      input {
+        width: 100%;
+        border: var(--border-width) solid var(--border-color);
+        background-color: var(--control-color);
+        color: var(--text-color);
+        margin-bottom: var(--gap);
+        padding: var(--gap);
+      }
+
+      dialog::backdrop {
+        background-color: rgba(0, 0, 0, 0.8);
+      }
+
+      /**
+       * Layout
+       */
+
+      #app {
+        display: grid;
+        grid-template-columns: 2fr 3fr;
+        grid-template-rows: min-content 1fr;
+        grid-template-areas:
+          'header header'
+          'sidebar main';
+      }
+
+      header {
+        grid-area: header;
+        border-bottom: var(--border-width) solid var(--border-color);
+        padding-left: var(--gap);
+        display: flex;
+      }
+
+      #username {
+        flex: 1;
+      }
+
+      aside {
+        grid-area: sidebar;
+        border-right: var(--border-width) solid var(--border-color);
+      }
+
+      main {
+        grid-area: main;
+      }
+
+      /**
+       * Login
+       */
+
+      #login input,
+      #login button {
+        font-size: 1.5rem;
+        width: 100%;
+      }
+
+      #logout {
+        font-size: 1.5rem;
+        padding: var(--gap) var(--double-gap);
+      }
+
+      /**
+       * User list
+       */
+
+      #userlist button {
+        width: 100%;
+        font-size: 2em;
+        border-radius: 0;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--control-color);
+      }
+
+      #userlist button:hover {
+        background-color: var(--border-color);
+      }
+
+      /**
+       * Log
+       */
+
+      #log > li {
+        margin-bottom: var(--half-gap);
+      }
+
+      /**
+       * Dialogs
+       */
+
+      .confirm-button {
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .question,
+      .confirm-button button {
+        font-size: 1.5em;
+      }
+    </style>
   </head>
   <body>
+    <div id="app">
+      <header>
+        <h1 id="username">&nbsp;</h1>
+        <button id="logout">Salir</button>
+      </header>
+      <aside id="userlist"></aside>
+      <main><ul id="log"></ul></main>
+    </div>
+
+    <dialog id="login" aria-modal="true">
+      <form method="dialog">
+        <input
+          type="text"
+          id="username-input"
+          placeholder="Tu nombre"
+          required
+          autofocus
+        />
+        <button type="submit">Entrar</button>
+      </form>
+    </dialog>
+
+    <template id="confirm-dialog">
+      <dialog>
+        <p class="question"></p>
+        <div class="confirm-button">
+          <button class="yes">Si</button>
+          <button class="no">No</button>
+        </div>
+      </dialog>
+    </template>
   <script type="text/javascript" src="main.js"></script></body>
 </html>
