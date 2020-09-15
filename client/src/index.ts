@@ -15,12 +15,12 @@ import {
   userConnected,
   userDisconnected,
 } from './users';
-import { PeerConnection } from './webrtc';
+import { Channel } from './webrtc';
 import { Socket } from './websocket';
 
 const room = location.hash as RoomName;
 const t = OutgoingMessageType;
-const socket = new Socket('wss://amongus.amatiasq.com');
+const socket = new Socket('wss://api.amatiasq.com/walkie');
 let username = '';
 
 onUserClicked(toggleCall);
@@ -84,7 +84,7 @@ function toggleCall(user: User) {
 
 async function callUser(user: User) {
   log(`Iniciando llamada a ${user.name}...`);
-  const conn = new PeerConnection(user, m => socket.send(m));
+  const conn = new Channel(user, m => socket.send(m));
   const stream = await captureAudio();
 
   listenToSocket(conn, socket, user);
@@ -114,7 +114,7 @@ async function receiveOffer(user: User, offer: RTCSessionDescription) {
   }
 
   log(`Llamada de ${user.name} aceptada`);
-  const conn = new PeerConnection(user, m => socket.send(m));
+  const conn = new Channel(user, m => socket.send(m));
   const stream = await captureAudio();
 
   listenToSocket(conn, socket, user);
@@ -127,7 +127,7 @@ async function receiveOffer(user: User, offer: RTCSessionDescription) {
   return conn;
 }
 
-function listenToSocket(conn: PeerConnection, socket: Socket, user: User) {
+function listenToSocket(conn: Channel, socket: Socket, user: User) {
   socket.onMessage(
     OutgoingMessageType.OFFER_REJECTED,
     ifFromUser(() => {

@@ -1,6 +1,6 @@
 import { SerializedUser } from '../../shared/SerializedUser';
 import { log, renderUsers } from './ui';
-import { PeerConnection } from './webrtc';
+import { Channel } from './webrtc';
 
 let users: User[] = [];
 let onClick: Function;
@@ -47,7 +47,7 @@ export class User {
   room;
   name;
 
-  private connection: PeerConnection | null = null;
+  private connection: Channel | null = null;
   get isCalling() {
     return Boolean(this.connection);
   }
@@ -65,7 +65,7 @@ export class User {
     this.name = serialized.name;
   }
 
-  callStarted(connection: PeerConnection) {
+  callStarted(connection: Channel) {
     this.connection = connection;
   }
 

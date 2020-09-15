@@ -35,6 +35,9 @@
     "webpack-merge": "4.2.2"
   },
   "dependencies": {
+    "@amatiasq/emitter": "^0.1.0",
+    "@amatiasq/json-socket": "^0.1.1",
+    "@amatiasq/peer-connection": "^0.1.1",
     "freeice": "^2.2.2"
   }
 }
