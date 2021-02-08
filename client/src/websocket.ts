@@ -5,7 +5,8 @@ import {
 } from '../../shared/OutgoingMessage';
 import { logAllEvents } from './debug';
 
-const DEFAULT_RECONNECTION_DELAY = 10;
+const DEFAULT_RECONNECTION_DELAY = 100;
+const MAX_RECONNECT_ATTEMPTS = 14;
 
 type Listener = (message: OutgoingMessage) => void;
 
@@ -17,6 +18,8 @@ type TypedMessage<T extends OutgoingMessageType> = Extract<
 export class Socket {
   private ws: WebSocket;
   private reconnectionDelay = DEFAULT_RECONNECTION_DELAY;
+  private reconnectAttempts = 0;
+  private isReconnecting = false;
   private readonly listeners = new Map<OutgoingMessageType, Listener[]>();
 
   constructor(public readonly uri: string) {
@@ -39,7 +42,7 @@ export class Socket {
   }
 
   private init() {
-    const socket = new WebSocket('wss://amongus.amatiasq.com');
+    const socket = new WebSocket('wss://api.amatiasq.com/walkie');
 
     logAllEvents(socket, 'WebSocket');
 
@@ -51,16 +54,31 @@ export class Socket {
   }
 
   private reconnect() {
-    console.warn('Socket closed.');
+    if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+      console.error(
+        `Websocket aborted after ${this.reconnectAttempts} attempts`,
+      );
+      return;
+    }
+
+    if (this.isReconnecting) {
+      return;
+    }
+    this.isReconnecting = true;
+
+    console.warn(`Socket closed. Waiting ${this.reconnectionDelay / 1000}s`);
     setTimeout(() => {
       console.warn('Reconnecting...');
       this.reconnectionDelay *= 2;
+      this.reconnectAttempts++;
+      this.isReconnecting = false;
       this.ws = this.init();
     }, this.reconnectionDelay);
   }
 
   private processMessage(event: MessageEvent) {
     this.reconnectionDelay = DEFAULT_RECONNECTION_DELAY;
+    this.reconnectAttempts = 0;
 
     const message = JSON.parse(event.data) as OutgoingMessage;
     const listeners = this.listeners.get(message.type);

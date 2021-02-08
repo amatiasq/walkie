@@ -1,35 +1,76 @@
+import { UserName } from '../../shared/SerializedUser';
 import { User } from './users';
 
-export function forceUserToSetName() {
-  let name = sessionStorage.getItem('amongus:username');
-  while (!name) name = prompt('Username');
-  sessionStorage.setItem('amongus:username', name);
-  return name;
+const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
+  document.querySelector(selector) as T;
+const userList = $('#userlist');
+const logContainer = $('#log');
+
+export async function getUserName() {
+  const key = 'amongus:username';
+  const stored = sessionStorage.getItem(key);
+
+  $('#logout')!.addEventListener('click', e => {
+    sessionStorage.removeItem(key);
+    location.reload();
+  });
+
+  if (stored) {
+    return Promise.resolve(stored as UserName);
+  }
+
+  const $dialog = $<HTMLDialogElement>('#login');
+  const $form = $dialog.querySelector('form') as HTMLFormElement;
+  const $input = $form?.querySelector('input[type=text]') as HTMLInputElement;
+
+  $dialog.showModal();
+
+  return new Promise<UserName>((resolve, reject) => {
+    $form.addEventListener('submit', e => {
+      const value = $input.value.trim();
+      sessionStorage.setItem(key, value);
+      resolve(value as UserName);
+    });
+  });
 }
 
 export function renderUsername(name: string) {
   const parent = $('#username');
-  parent.innerHTML = `<h1>${name}</h1>`;
+  parent.innerHTML = name;
 }
 
-export function renderCTA(text: string, onClick: Function) {
-  const parent = $('#cta');
-  const button = makeButton(text, () => {
-    parent.innerHTML = '';
-    onClick();
+export function confirm(question: string) {
+  const $template = $<HTMLTemplateElement>('#confirm-dialog');
+  const $dialog = document.importNode($template.content, true)
+    .firstElementChild as HTMLDialogElement;
+
+  document.body.appendChild($dialog);
+
+  const get = (selector: string) => $dialog.querySelector(selector)!;
+  get('.question')!.innerHTML = question;
+
+  return new Promise(resolve => {
+    get('.yes')!.addEventListener('click', () => resolve(true));
+    get('.no')!.addEventListener('click', () => resolve(false));
+    $dialog.showModal();
+  }).then(result => {
+    $dialog.remove();
+    return result;
   });
-
-  parent.appendChild(document.createElement('hr'));
-  parent.appendChild(button);
 }
 
-export function renderMessage(message: string) {
-  const parent = $('#message');
-  parent.innerHTML = message;
+export function log(content: string) {
+  console.log('LOG', content);
+  const li = document.createElement('li');
+  li.innerHTML = content;
+  logContainer.appendChild(li);
+
+  const parent = logContainer.parentElement!;
+  parent.scrollTop = parent.scrollHeight;
 }
 
 export function renderUsers(users: User[], onClick: Function) {
-  const parent = $('#userlist');
+  userList.innerHTML = '';
 
   for (const user of users) {
     const el = document.createElement('div');
@@ -39,34 +80,17 @@ export function renderUsers(users: User[], onClick: Function) {
       renderUsers(users, onClick);
     };
 
-    const button = user.isCalling
-      ? makeButton(`${user.name} (colgar)...`, buttonClick)
-      : makeButton(user.name, buttonClick);
+    const suffix = user.isAnswered
+      ? '(hablando)<br>Click para colgar'
+      : user.isCalling
+      ? '(llamando...)'
+      : '';
 
+    const button = document.createElement('button');
+    button.innerHTML = `${user.name} ${suffix}`;
+    button.onclick = buttonClick;
     el.appendChild(button);
-    parent.appendChild(el);
+
+    userList.appendChild(el);
   }
-}
-
-function $(id: string) {
-  const found = document.querySelector(id);
-
-  if (found) {
-    found.innerHTML = '';
-    return found;
-  }
-
-  const created = document.createElement('div');
-  created.id = id.substr(1);
-  document.body.appendChild(created);
-  return created;
-}
-
-function makeButton(text: string, onClick: (e: Event) => void) {
-  const btn = document.createElement('button');
-  btn.innerHTML = text;
-  btn.style.fontSize = '3em';
-  btn.style.padding = '0.5em';
-  btn.onclick = onClick as any;
-  return btn;
 }

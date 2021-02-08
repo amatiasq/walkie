@@ -4,7 +4,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const webpackMerge = require('webpack-merge');
 
-const modeConfig = (env) => require(`./build-utils/webpack.${env}`)(env);
+const modeConfig = env => require(`./build-utils/webpack.${env}`)(env);
 
 module.exports = ({ mode, presets } = { mode: 'production', presets: [] }) => {
   return webpackMerge(
@@ -58,9 +58,7 @@ module.exports = ({ mode, presets } = { mode: 'production', presets: [] }) => {
       },
       plugins: [
         new CleanWebpackPlugin({}),
-        new HtmlWebPackPlugin({
-          title: 'A Mongus',
-        }),
+        new HtmlWebPackPlugin({ template: 'index.html' }),
       ],
     },
     modeConfig(mode),

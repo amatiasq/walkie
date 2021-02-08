@@ -5,12 +5,19 @@ import {
 } from '../../shared/IncomingMessage';
 import { playAudio } from './audio';
 import { logAllEvents } from './debug';
-import { User } from './users';
+import { log } from './ui';
+import { refreshUserList, User } from './users';
 
 import freeice = require('freeice');
 
 export class PeerConnection {
   private readonly rtc = this.createRtc();
+  hasRemoteTracks = false;
+  hasLocalTracks = false;
+
+  get hasTracks() {
+    return this.hasRemoteTracks && this.hasLocalTracks;
+  }
 
   constructor(
     public readonly user: User,
@@ -23,7 +30,7 @@ export class PeerConnection {
 
     await this.send({
       type: IncomingMessageType.SEND_OFFER,
-      to: this.user.name,
+      to: this.user.id,
       offer,
     });
   }
@@ -34,7 +41,7 @@ export class PeerConnection {
 
     await this.send({
       type: IncomingMessageType.SEND_ANSWER,
-      to: this.user.name,
+      to: this.user.id,
       answer,
     });
   }
@@ -43,11 +50,9 @@ export class PeerConnection {
     return this.setRemoteDescription(answer);
   }
 
-  receiveCandidate(candidate: RTCIceCandidate) {
-    return this.rtc.addIceCandidate(new RTCIceCandidate(candidate));
-  }
-
   addTrack(track: MediaStreamTrack, stream: MediaStream) {
+    this.hasLocalTracks = true;
+    log(`Enviando audio a ${this.user.name}.`);
     return this.rtc.addTrack(track, stream);
   }
 
@@ -55,51 +60,45 @@ export class PeerConnection {
     this.rtc.close();
   }
 
-  private createRtc() {
-    const connection = new RTCPeerConnection({ iceServers: freeice() });
-    logAllEvents(connection, `WebRTC(${this.user.name})`);
+  private processIceCandidates() {
+    return new Promise<void>(resolve => {
+      this.rtc.onicecandidate = ({ candidate }) =>
+        candidate == null && resolve();
+    });
+  }
 
-    connection.ontrack = e => {
-      console.log('got track');
+  private createRtc() {
+    const conn = new RTCPeerConnection({ iceServers: freeice() });
+    logAllEvents(conn, `WebRTC(${this.user.name})`);
+
+    conn.ontrack = e => {
+      this.hasRemoteTracks = true;
+      log(`Recibiendo audio de ${this.user.name}.`);
+      refreshUserList();
       playAudio(e.streams[0]);
     };
 
-    connection.ondatachannel = event => {
+    conn.ondatachannel = event => {
       let receiveChannel = event.channel;
       receiveChannel.onmessage = e => this.onDataChannelMessage(e);
       receiveChannel.onopen = () =>
         console.log('Data channel is open and ready to be used.');
     };
 
-    connection.onicecandidate = ({ candidate }) => {
-      if (!candidate) return;
-      console.log('Candidate ready');
-      this.send({
-        type: IncomingMessageType.SEND_CANDIDATE,
-        to: this.user.name,
-        candidate,
-      });
-    };
-
-    return connection;
-  }
-
-  private createDataChannel() {
-    const dataChannel = this.rtc.createDataChannel('messenger');
-    logAllEvents(dataChannel, `DataChannel(${this.user.name})`);
-    dataChannel.onmessage = e => this.onDataChannelMessage(e);
-    return dataChannel;
+    return conn;
   }
 
   private async createOffer(options: RTCOfferOptions = {}) {
     const offer = await this.rtc.createOffer(options);
     await this.rtc.setLocalDescription(offer);
+    await this.processIceCandidates();
     return this.rtc.localDescription!;
   }
 
   private async createAnswer(options: RTCOfferOptions = {}) {
     const answer = await this.rtc.createAnswer(options);
     await this.rtc.setLocalDescription(answer);
+    await this.processIceCandidates();
     return this.rtc.localDescription!;
   }
 

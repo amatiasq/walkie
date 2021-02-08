@@ -1,43 +1,62 @@
+import { UserId } from './../../shared/SerializedUser';
 import { v4 as uuidv4 } from 'uuid';
 
-import { SerializedUser } from '../../shared/SerializedUser';
+import {
+  RoomName,
+  SerializedUser,
+  UserName,
+} from '../../shared/SerializedUser';
 import { NiceSocket } from './websocket';
 
-const users = new Map<string, User>();
+const users: User[] = [];
 
-export function isUsernameAvailable(name: string) {
-  return !users.has(name);
+export function isUsernameAvailable(room: RoomName, name: UserName) {
+  return !users.some(match(room, name));
 }
 
-export function getUser(name: string) {
-  return users.get(name);
+export function getUserById(id: UserId) {
+  return users.find(x => x.id === id);
 }
 
-export function registerUser(ws: NiceSocket, name: string) {
+export function getUser(room: RoomName, name: UserName) {
+  return users.find(match(room, name));
+}
+
+export function registerUser(ws: NiceSocket, room: RoomName, name: UserName) {
   const user = ws as User;
-  user.id = uuidv4();
+  user.id = uuidv4() as UserId;
+  user.room = room;
   user.name = name;
-  users.set(name, user);
+  users.push(user);
   return user;
 }
 
 export function removeUser(ws: NiceSocket) {
-  const { name } = ws as User;
+  const { room, name } = ws as User;
 
   if (!name) {
     return false;
   }
 
-  users.delete(name);
+  const index = users.findIndex(match(room, name));
+  users.splice(index, 1);
   return true;
+}
+
+export function getUsersByRoom(room: RoomName) {
+  return users.filter(x => x.room === room);
 }
 
 export function getConnectedUsers() {
   return Array.from(users.values());
 }
 
-export function serializeUser({ id, name }: User) {
-  return { id, name };
+export function serializeUser({ id, name, room }: User) {
+  return { id, name, room };
 }
 
 export type User = NiceSocket & SerializedUser;
+
+function match(room: string, name: string) {
+  return (x: SerializedUser) => x.room === room && x.name === name;
+}

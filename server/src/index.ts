@@ -8,9 +8,10 @@ import {
   OutgoingMessage,
   OutgoingMessageType,
 } from '../../shared/OutgoingMessage';
+import { RoomName, UserId, UserName } from '../../shared/SerializedUser';
 import {
-  getConnectedUsers,
-  getUser,
+  getUserById,
+  getUsersByRoom,
   isUsernameAvailable,
   registerUser,
   removeUser,
@@ -19,7 +20,7 @@ import {
 } from './users';
 import { bindWebsocketTo, NiceSocket } from './websocket';
 
-const port = process.env.PORT || 9000;
+const port = process.env.PORT || 21983;
 const server = createServer((req, res) => {});
 const webSocketServer = bindWebsocketTo(server);
 
@@ -40,15 +41,19 @@ function processMessage(ws: NiceSocket, data: IncomingMessage) {
 
   switch (data.type) {
     case IncomingMessageType.LOGIN:
-      return attemptLogin(ws, data.name);
+      return attemptLogin(ws, data.room, data.name);
     case IncomingMessageType.LOGOUT:
       return logout(ws);
     case IncomingMessageType.SEND_OFFER:
       return deflect(user, data, OutgoingMessageType.RECEIVE_OFFER);
+    case IncomingMessageType.OFFER_REJECTED:
+      return deflect(user, data, OutgoingMessageType.OFFER_REJECTED);
     case IncomingMessageType.SEND_ANSWER:
       return deflect(user, data, OutgoingMessageType.RECEIVE_ANSWER);
-    case IncomingMessageType.SEND_CANDIDATE:
-      return deflect(user, data, OutgoingMessageType.RECEIVE_CANDIDATE);
+    // case IncomingMessageType.SEND_CANDIDATE:
+    //   return deflect(user, data, OutgoingMessageType.RECEIVE_CANDIDATE);
+    case IncomingMessageType.END_CONNECTION:
+      return deflect(user, data, OutgoingMessageType.END_CONNECTION);
     default:
       ws.sendJson({
         type: OutgoingMessageType.ERROR,
@@ -57,8 +62,8 @@ function processMessage(ws: NiceSocket, data: IncomingMessage) {
   }
 }
 
-function attemptLogin(ws: NiceSocket, name: string): void {
-  if (!isUsernameAvailable(name)) {
+function attemptLogin(ws: NiceSocket, room: RoomName, name: UserName): void {
+  if (!isUsernameAvailable(room, name)) {
     return ws.sendJson<OutgoingMessage>({
       type: OutgoingMessageType.LOGIN_RESULT,
       success: false,
@@ -66,8 +71,8 @@ function attemptLogin(ws: NiceSocket, name: string): void {
     });
   }
 
-  const otherUsers = getConnectedUsers();
-  const newUser = registerUser(ws, name);
+  const otherUsers = getUsersByRoom(room);
+  const newUser = registerUser(ws, room, name);
 
   ws.sendJson<OutgoingMessage>({
     type: OutgoingMessageType.LOGIN_RESULT,
@@ -91,7 +96,7 @@ function logout(ws: NiceSocket) {
   }
 
   const gone = ws as User;
-  const users = getConnectedUsers();
+  const users = getUsersByRoom(gone.room);
 
   for (const user of users) {
     user.sendJson<OutgoingMessage>({
@@ -104,8 +109,8 @@ function logout(ws: NiceSocket) {
 }
 
 function deflect(from: User, data: IncomingMessage, type: OutgoingMessageType) {
-  const { type: _, to, ...rest } = data as IncomingMessage & { to: string };
-  const target = getUser(to);
+  const { type: _, to, ...rest } = data as IncomingMessage & { to: UserId };
+  const target = getUserById(to);
 
   if (!target) {
     return from.sendJson<OutgoingMessage>({
@@ -114,10 +119,10 @@ function deflect(from: User, data: IncomingMessage, type: OutgoingMessageType) {
     });
   }
 
-  console.log(`DEFLECT from ${from.name} to ${to} - ${_}`);
+  console.log(`DEFLECT from ${from.name} to ${target.name} - ${_}`);
   target.sendJson({
     type,
-    from: from.name,
+    from: from.id,
     ...rest,
   });
 }

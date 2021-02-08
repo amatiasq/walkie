@@ -3,11 +3,13 @@ import {
   OutgoingMessage,
   OutgoingMessageType,
 } from '../../shared/OutgoingMessage';
-import { captureAudio } from './audio';
-import { forceUserToSetName, renderUsername } from './ui';
+import { RoomName } from '../../shared/SerializedUser';
+import { beep, captureAudio } from './audio';
+import { confirm, getUserName, log, renderUsername } from './ui';
 import {
-  getUserByName,
+  getUserById,
   onUserClicked,
+  refreshUserList,
   setUserList,
   User,
   userConnected,
@@ -16,8 +18,10 @@ import {
 import { PeerConnection } from './webrtc';
 import { Socket } from './websocket';
 
+const room = location.hash as RoomName;
 const t = OutgoingMessageType;
 const socket = new Socket('wss://amongus.amatiasq.com');
+let username = '';
 
 onUserClicked(toggleCall);
 
@@ -27,16 +31,19 @@ socket.onMessage(t.USER_CONNECTED, data => userConnected(data.user));
 socket.onMessage(t.USER_DISCONNECTED, data => userDisconnected(data.user));
 
 socket.onMessage(t.RECEIVE_OFFER, data => {
-  const user = getUserByName(data.from);
+  const user = getUserById(data.from);
+  if (!user) throw new Error(`WTF! Unwknown user ${data.from}`);
   return receiveOffer(user, data.offer);
 });
 
-function login() {
-  const name = forceUserToSetName();
+async function login() {
+  const name = await getUserName();
   renderUsername(name);
+  username = name;
 
   socket.send({
     type: IncomingMessageType.LOGIN,
+    room,
     name,
   });
 }
@@ -53,14 +60,30 @@ function handleLoginResult(data: OutgoingMessage) {
     return;
   }
 
+  // log(`Conectado como ${username}`);
+
+  if (data.users.length) {
+    const userList = data.users.map(x => `<li>${x.name}</li>`).join('');
+    log(`Personas en la habitación: <ul>${userList}</ul>`);
+  }
+
   setUserList(data.users);
 }
 
 function toggleCall(user: User) {
-  return user.isCalling ? user.hangup() : callUser(user);
+  if (!user.isCalling) {
+    return callUser(user);
+  }
+
+  user.hangup();
+  return socket.send({
+    type: IncomingMessageType.END_CONNECTION,
+    to: user.id,
+  });
 }
 
 async function callUser(user: User) {
+  log(`Iniciando llamada a ${user.name}...`);
   const conn = new PeerConnection(user, m => socket.send(m));
   const stream = await captureAudio();
 
@@ -68,12 +91,29 @@ async function callUser(user: User) {
 
   stream.getTracks().forEach(x => conn.addTrack(x, stream));
   conn.sendOffer();
+  log(`Enviando solicitud de llamada a ${user.name}...`);
 
   user.callStarted(conn);
   return conn;
 }
 
 async function receiveOffer(user: User, offer: RTCSessionDescription) {
+  log(`${user.name} quiere iniciar una llamada`);
+  beep();
+  const shouldAnswer = await confirm(
+    `${user.name} quiere iniciar una llamada.<br>Contestar?`,
+  );
+
+  if (!shouldAnswer) {
+    log(`Llamada de ${user.name} rechazada`);
+    socket.send({
+      type: IncomingMessageType.OFFER_REJECTED,
+      to: user.id,
+    });
+    return;
+  }
+
+  log(`Llamada de ${user.name} aceptada`);
   const conn = new PeerConnection(user, m => socket.send(m));
   const stream = await captureAudio();
 
@@ -81,6 +121,7 @@ async function receiveOffer(user: User, offer: RTCSessionDescription) {
 
   stream.getTracks().forEach(x => conn.addTrack(x, stream));
   conn.receiveOffer(offer);
+  log(`Enviando respuesta a ${user.name}...`);
 
   user.callStarted(conn);
   return conn;
@@ -88,18 +129,30 @@ async function receiveOffer(user: User, offer: RTCSessionDescription) {
 
 function listenToSocket(conn: PeerConnection, socket: Socket, user: User) {
   socket.onMessage(
+    OutgoingMessageType.OFFER_REJECTED,
+    ifFromUser(() => {
+      log(`${user.name} ha rechazado la llamada.`);
+      user.hangup();
+    }),
+  );
+
+  socket.onMessage(
     OutgoingMessageType.RECEIVE_ANSWER,
     ifFromUser(message => conn.receiveAnswer(message.answer)),
   );
 
   socket.onMessage(
-    OutgoingMessageType.RECEIVE_CANDIDATE,
-    ifFromUser(message => conn.receiveCandidate(message.candidate)),
+    OutgoingMessageType.END_CONNECTION,
+    ifFromUser(() => {
+      log(`${user.name} ha terminado la llamada.`);
+      user.hangup();
+      refreshUserList();
+    }),
   );
 
   function ifFromUser<T>(action: (x: T) => void) {
     return (message: T) => {
-      if ((message as any).from === user.name) {
+      if ((message as any).from === user.id) {
         return action(message);
       }
     };

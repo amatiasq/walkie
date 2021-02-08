@@ -21,19 +21,3 @@ function getAllProps(value: any) {
 function uniq<T>(list: T[]) {
   return Array.from(new Set(list));
 }
-
-// function cloneEvent(obj: any) {
-//   return {
-//     ...clone(obj),
-//     target: obj.target && clone(obj.target),
-//   };
-// }
-
-// function clone(obj: any) {
-//   return (
-//     getAllProps(obj)
-//       .filter(x => typeof obj[x] !== 'function')
-//       // @ts-ignore
-//       .reduce((r, x) => ((r[x] = obj[x]), r), {})
-//   );
-// }

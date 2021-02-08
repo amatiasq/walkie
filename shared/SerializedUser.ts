@@ -1,4 +1,9 @@
+export type UserId = '[string UserId]';
+export type RoomName = '[string RoomName]';
+export type UserName = '[string UserName]';
+
 export interface SerializedUser {
-  id: string;
-  name: string;
+  id: UserId;
+  room: RoomName;
+  name: UserName;
 }
